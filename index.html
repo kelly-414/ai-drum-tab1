@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AI Drum TAB">
+<link rel="manifest" href="manifest.webmanifest">
+<title>AI Drum TAB</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#151d31;--panel2:#1d2942;--line:#2b3854;--muted:#9aa9c3;--text:#f4f7ff;--accent:#80aaff;--green:#8de0b2}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(160deg,#111a30,#090d18 60%);color:var(--text);font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom)}
+main{max-width:760px;margin:auto;padding:18px 0 40px}.top{display:flex;justify-content:space-between;align-items:center;gap:10px}.brand{font-size:23px;font-weight:800;letter-spacing:.2px}.sub{color:var(--muted);font-size:12px;margin-top:4px}.pill{border:1px solid #36517e;border-radius:99px;padding:6px 10px;color:#b9d1ff;font-size:11px}
+.card{background:rgba(21,29,49,.96);border:1px solid var(--line);border-radius:18px;padding:15px;margin-top:14px;box-shadow:0 10px 30px #0002}
+h2{font-size:16px;margin:0 0 12px}p{line-height:1.5}.muted{color:var(--muted)}.small{font-size:12px;color:var(--muted)}
+button,.filebtn{border:0;border-radius:12px;padding:12px 14px;background:var(--accent);color:#081225;font-weight:750;font-size:14px;cursor:pointer}
+button.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line)}button:disabled{opacity:.45}
+input[type=file]{display:none}.upload{display:flex;align-items:center;justify-content:center;gap:10px;min-height:104px;border:1.5px dashed #52698e;border-radius:14px;background:#10192b;text-align:center;padding:16px;cursor:pointer}
+.upload strong{display:block}.upload span{font-size:12px;color:var(--muted)}
+audio{width:100%;margin-top:12px}.wave{width:100%;height:74px;background:#0d1525;border-radius:10px;margin-top:10px}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.controls label{font-size:12px;color:var(--muted)}input[type=number]{width:82px;background:#0d1525;border:1px solid var(--line);border-radius:9px;color:white;padding:10px;font-size:16px}
+.stat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.stat div{background:#0f1729;border-radius:11px;padding:10px}.stat b{font-size:19px;display:block}.stat span{font-size:11px;color:var(--muted)}
+.gridwrap{overflow-x:auto}.drumgrid{min-width:560px;display:grid;grid-template-columns:100px repeat(16,minmax(22px,1fr));gap:4px;align-items:center}
+.headcell{font-size:10px;text-align:center;color:var(--muted);padding:4px 0}.rowname{font-size:12px;color:#dce6fb;white-space:nowrap}.step{height:29px;border:1px solid #35425c;border-radius:6px;background:#0d1525;padding:0}.step.on{background:#80aaff;border-color:#a8c6ff;box-shadow:0 0 0 1px #80aaff33}.step.beat{border-left:2px solid #7085a8}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}.legend span{font-size:11px;color:var(--muted)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.actions button{width:100%}
+.notice{background:#302719;border:1px solid #6e5126;color:#f5d7a0;padding:11px;border-radius:12px;font-size:12px;line-height:1.5;margin-top:12px}
+.good{background:#10291f;border:1px solid #285b43;color:#a9ebc6}
+footer{font-size:11px;color:#8190aa;text-align:center;padding:18px 6px}
+@media(min-width:600px){.card{padding:20px}.brand{font-size:27px}}
+</style>
+</head>
+<body>
+<main>
+<header class="top"><div><div class="brand">🥁 AI Drum TAB</div><div class="sub">手機鼓譜工作台 · Beta 0.1</div></div><span class="pill">免費原型</span></header>
+
+<section class="card">
+<h2>1. 匯入歌曲</h2>
+<label class="upload" for="audioFile"><div><strong>＋ 選擇音訊檔案</strong><span>MP3、WAV、M4A、AAC · 建議先用 30–60 秒片段測試</span></div></label>
+<input id="audioFile" type="file" accept="audio/*">
+<div id="fileName" class="small" style="margin-top:10px">尚未選擇歌曲</div>
+<audio id="player" controls></audio>
+<canvas id="wave" class="wave" width="700" height="74"></canvas>
+<div class="notice">目前版本可在 iPhone 本機載入音檔、估算節拍、編輯鼓 TAB 並匯出 MIDI。完整歌曲的 AI 鼓聲分離與自動逐音符辨識尚未接上雲端模型；不會把節奏猜測冒充成 AI 轉錄。</div>
+</section>
+
+<section class="card">
+<h2>2. 節奏分析</h2>
+<div class="controls"><button id="analyze">分析音訊節奏</button><label for="bpm">BPM</label><input id="bpm" type="number" min="40" max="240" value="120"><button class="secondary" id="applyTempo">套用</button></div>
+<div class="stat"><div><b id="duration">—</b><span>歌曲長度</span></div><div><b id="tempoResult">120</b><span>目前 BPM</span></div><div><b id="bars">1</b><span>顯示小節</span></div></div>
+<p class="small" id="analysisMsg">選擇歌曲後，可嘗試估算整體節奏。混音中的鼓以外樂器可能影響結果。</p>
+</section>
+
+<section class="card">
+<h2>3. 編輯鼓 TAB</h2>
+<div class="controls" style="justify-content:space-between"><div class="small">每列代表一種鼓；點格子可加入／移除音符</div><button class="secondary" id="clear">清空</button></div>
+<div class="gridwrap"><div class="drumgrid" id="drumGrid"></div></div>
+<div class="legend"><span>亮藍格＝有音符</span><span>每小節 16 格（16 分音符）</span></div>
+<div class="actions"><button id="exportMidi">匯出 MIDI</button><button class="secondary" id="exportJson">儲存專案</button><button class="secondary" id="print">列印／存成 PDF</button><button class="secondary" id="demo">載入基本節奏</button></div>
+<p class="small">MIDI 使用標準鼓組音色（通道 10）：Kick 36、Snare 38、Closed Hi-hat 42、Open Hi-hat 46、Crash 49、Ride 51、Tom 45／50。</p>
+</section>
+
+<section class="card">
+<h2>4. 下一階段：AI 自動轉錄</h2>
+<p class="muted" style="font-size:13px;margin:0">要把完整歌曲真正轉成每一個 Kick、Snare、Hi-hat 音符，需要接入可處理音訊的雲端後端。免費雲端運算通常有額度限制；例如 Hugging Face 目前免費帳戶沒有固定的 Inference Provider 月額度，Demucs 線上服務則提供有限試用額度。<a href="https://huggingface.co/docs/inference-providers/pricing" target="_blank" rel="noopener" style="color:#9fc0ff">查看額度說明</a>。</p>
+<div class="notice good">本原型不會偷偷收費，也不會要求輸入信用卡。雲端 AI 轉錄功能會在確認可靠且可用的免費服務後再接入。</div>
+</section>
+<footer>AI Drum TAB · 音檔只在目前瀏覽器頁面處理；關閉頁面後不會自動保留。請只上傳你有權使用的音訊。</footer>
+</main>
+<script>
+const rows=[["HH Closed",42],["HH Open",46],["Crash",49],["Ride",51],["High Tom",50],["Low Tom",45],["Snare",38],["Kick",36]];
+const grid=document.getElementById('drumGrid'), state=rows.map(()=>Array(16).fill(false));
+const names=["樂器","1","e","&","a","2","e","&","a","3","e","&","a","4","e","&","a"];
+function drawGrid(){
+ grid.innerHTML='';
+ names.forEach((n,i)=>{let d=document.createElement('div');d.className='headcell';d.textContent=n;grid.append(d)});
+ rows.forEach((r,ri)=>{
+  let label=document.createElement('div');label.className='rowname';label.textContent=r[0];grid.append(label);
+  state[ri].forEach((on,si)=>{let b=document.createElement('button');b.className='step'+(on?' on':'')+(si%4===0?' beat':'');b.setAttribute('aria-label',r[0]+' 第'+(si+1)+'格');b.onclick=()=>{state[ri][si]=!state[ri][si];drawGrid()};grid.append(b)});
+ });
+}
+drawGrid();
+const fileInput=document.getElementById('audioFile'),player=document.getElementById('player'),canvas=document.getElementById('wave'),ctx=canvas.getContext('2d');
+let audioBuffer=null,objectUrl=null;
+function drawWave(buffer){
+ const data=buffer.getChannelData(0),w=canvas.width,h=canvas.height;ctx.clearRect(0,0,w,h);ctx.strokeStyle='#80aaff';ctx.lineWidth=1;ctx.beginPath();
+ const step=Math.max(1,Math.floor(data.length/w));
+ for(let x=0;x<w;x++){let min=1,max=-1;for(let j=0;j<step;j++){let v=data[x*step+j]||0;if(v<min)min=v;if(v>max)max=v}ctx.moveTo(x,(1+min)*h/2);ctx.lineTo(x,(1+max)*h/2)}ctx.stroke();
+}
+fileInput.addEventListener('change',async()=>{
+ const f=fileInput.files[0];if(!f)return;
+ document.getElementById('fileName').textContent=f.name;
+ if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=URL.createObjectURL(f);player.src=objectUrl;
+ const AC=window.AudioContext||window.webkitAudioContext;
+ try{const ac=new AC();const buf=await f.arrayBuffer();audioBuffer=await ac.decodeAudioData(buf);document.getElementById('duration').textContent=formatTime(audioBuffer.duration);drawWave(audioBuffer);document.getElementById('analysisMsg').textContent='音檔已載入。按「分析音訊節奏」估算 BPM。';ac.close()}catch(e){document.getElementById('analysisMsg').textContent='無法解碼此音檔，請改用 MP3 或 WAV。'}
+});
+function formatTime(s){return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0')}
+function estimateBpm(buf){
+ const sr=buf.sampleRate,ch=buf.numberOfChannels,n=buf.length,hop=512;
+ let mono=new Float32Array(Math.ceil(n/hop));
+ for(let c=0;c<ch;c++){const d=buf.getChannelData(c);for(let i=0,k=0;i<n;i+=hop,k++)mono[k]+=Math.abs(d[i])/ch}
+ let env=new Float32Array(mono.length);for(let i=1;i<mono.length;i++)env[i]=Math.max(0,mono[i]-mono[i-1]);
+ const mean=env.reduce((a,b)=>a+b,0)/env.length;for(let i=0;i<env.length;i++)env[i]=Math.max(0,env[i]-mean);
+ const rate=sr/hop,minLag=Math.floor(rate*60/240),maxLag=Math.floor(rate*60/40);let best=0,bestScore=-1;
+ for(let lag=minLag;lag<=maxLag;lag++){let score=0;for(let i=lag;i<env.length;i++)score+=env[i]*env[i-lag];if(score>bestScore){bestScore=score;best=lag}}
+ let bpm=60*rate/best;while(bpm<70)bpm*=2;while(bpm>180)bpm/=2;return Math.round(bpm);
+}
+document.getElementById('analyze').onclick=()=>{if(!audioBuffer){alert('請先選擇歌曲');return}let bpm=estimateBpm(audioBuffer);document.getElementById('bpm').value=bpm;document.getElementById('tempoResult').textContent=bpm;document.getElementById('analysisMsg').textContent='完成初步節奏估算：'+bpm+' BPM。這不是鼓聲分離或逐音符 AI 轉錄，請聽歌確認。'};
+document.getElementById('applyTempo').onclick=()=>{let v=Math.max(40,Math.min(240,Number(document.getElementById('bpm').value)||120));document.getElementById('bpm').value=v;document.getElementById('tempoResult').textContent=v;};
+document.getElementById('clear').onclick=()=>{state.forEach(r=>r.fill(false));drawGrid()};
+document.getElementById('demo').onclick=()=>{state.forEach(r=>r.fill(false));for(let i=0;i<16;i+=2)state[0][i]=true;[0,8].forEach(i=>state[6][i]=true);[0,6,8,14].forEach(i=>state[7][i]=true);drawGrid()};
+document.getElementById('bars').textContent='1';
+function vlq(v){let b=[v&127];while((v>>=7)){b.unshift((v&127)|128)}return b}
+function midiFile(){
+ const bpm=Number(document.getElementById('bpm').value)||120, mpqn=Math.round(60000000/bpm), ticks=120, ev=[];
+ ev.push({t:0,b:[0xFF,0x51,0x03,(mpqn>>16)&255,(mpqn>>8)&255,mpqn&255]});
+ rows.forEach((r,ri)=>state[ri].forEach((on,si)=>{if(on){let t=si*ticks/4;ev.push({t,b:[0x99,r[1],100]});ev.push({t:t+ticks/8,b:[0x89,r[1],0]})}}));
+ ev.sort((a,b)=>a.t-b.t);let track=[],last=0;for(const e of ev){track.push(...vlq(e.t-last),...e.b);last=e.t}track.push(0,0xFF,0x2F,0);
+ const header=[0x4d,0x54,0x68,0x64,0,0,0,6,0,0,0,1,1,0xE0];
+ const chunk=[0x4d,0x54,0x72,0x6b,(track.length>>>24)&255,(track.length>>>16)&255,(track.length>>>8)&255,track.length&255,...track];
+ return new Blob([new Uint8Array([...header,...chunk])],{type:'audio/midi'});
+}
+function download(blob,name){const a=document.createElement('a');const u=URL.createObjectURL(blob);a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}
+document.getElementById('exportMidi').onclick=()=>download(midiFile(),'drum-tab.mid');
+document.getElementById('exportJson').onclick=()=>download(new Blob([JSON.stringify({bpm:Number(document.getElementById('bpm').value),rows:rows.map((r,i)=>({name:r[0],note:r[1],steps:state[i]}))},null,2)],{type:'application/json'}),'drum-tab-project.json');
+document.getElementById('print').onclick=()=>window.print();
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script>
+</body></html>
